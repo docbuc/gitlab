@@ -1,0 +1,84 @@
+version: '3'
+services:
+  gitlab:
+    hostname: gitlab.dockerbuch.info
+    image: gitlab/gitlab-ce:latest
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.dockerbuch.info/'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['proxy_set_headers'] = {
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+        gitlab_rails['omniauth_providers'] = [
+          {
+            "name" => "google_oauth2",
+            "app_id" => "XXXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY.apps.googleusercontent.com",
+            "app_secret" => "XXXXXXXXXXXXYYYYYYYYYYYY",
+            "args" => { "access_type" => "offline", "approval_prompt" => '' }
+          }
+        ]
+        postgresql['enable'] = false
+        gitlab_rails['db_host'] = 'postgresql'
+        gitlab_rails['db_port'] = '5432'
+        gitlab_rails['db_username'] = 'gitlab'
+        gitlab_rails['db_password'] = 'ci5ahLielieY'
+        gitlab_rails['db_database'] = 'gitlab_prod'
+        gitlab_rails['db_adapter'] = 'postgresql'
+        gitlab_rails['db_encoding'] = 'utf8'
+        redis['enable'] = false
+        gitlab_rails['redis_host'] = 'redis'
+        gitlab_rails['redis_port'] = '6379'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        gitlab_rails['smtp_enable'] = true
+        gitlab_rails['smtp_openssl_verify_mode'] = 'none'
+        gitlab_rails['smtp_address'] = 'exim'
+        gitlab_rails['smtp_port'] = 25
+        gitlab_rails['gitlab_email_from'] = 'gitlab@dockerbuch.info'
+        gitlab_rails['gitlab_email_reply_to'] = 'gitlab@dockerbuch.info'
+        registry_external_url 'https://registry.dockerbuch.info'
+        registry_nginx['listen_port'] = 4567
+        registry_nginx['listen_https'] = false
+        registry_nginx['proxy_set_headers'] = {
+          "X-Forwarded-Proto" => "https",
+          "X-Forwarded-Ssl" => "on"
+        }
+    ports:
+      - "2222:22"
+    restart: always
+    volumes:
+      - config:/etc/gitlab
+      - logs:/var/log/gitlab
+      - data:/var/opt/gitlab
+    networks:
+      - nginxterminator_default
+      - default
+  redis:
+    image: redis:4
+  postgresql:
+    image: postgres:9
+    environment:
+      - POSTGRES_USER=gitlab
+      - POSTGRES_PASSWORD=ci5ahLielieY
+      - POSTGRES_DB=gitlab_prod
+    volumes:
+      - pgdata:/var/lib/postgresql
+  exim:
+    build: exim/
+    environment:
+      - RELAY_FROM=dbgl_gitlab_1.dbgl_default
+
+
+volumes:
+  config:
+  logs:
+  data:
+  pgdata:
+
+networks:
+  nginxterminator_default:
+    external: true
+
+
