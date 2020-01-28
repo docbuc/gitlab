@@ -57,9 +57,9 @@ services:
       - nginxterminator_default
       - default
   redis:
-    image: redis:4
+    image: redis:5
   postgresql:
-    image: postgres:9
+    image: postgres:10
     environment:
       - POSTGRES_USER=gitlab
       - POSTGRES_PASSWORD=ci5ahLielieY
@@ -69,7 +69,7 @@ services:
   exim:
     build: exim/
     environment:
-      - RELAY_FROM=gitlab_gitlab_1.dbgl_default
+      - RELAY_FROM=gitlab_gitlab_1.gitlab_default
 
 
 volumes:
