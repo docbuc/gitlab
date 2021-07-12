@@ -5,6 +5,8 @@ services:
     hostname: gitlab.dockerbuch.info
     image: gitlab/gitlab-ce:latest
     environment:
+      GITLAB_ROOT_PASSWORD: GanzGeheimGanz
+      GITLAB_ROOT_EMAIL: info@dockerbuch.info
       GITLAB_OMNIBUS_CONFIG: |
         external_url 'https://gitlab.dockerbuch.info/'
         nginx['listen_port'] = 80
@@ -13,22 +15,14 @@ services:
           "X-Forwarded-Proto" => "https",
           "X-Forwarded-Ssl" => "on"
         }
-        gitlab_rails['omniauth_providers'] = [
-          {
-            "name" => "google_oauth2",
-            "app_id" => "XXXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY.apps.googleusercontent.com",
-            "app_secret" => "XXXXXXXXXXXXYYYYYYYYYYYY",
-            "args" => { "access_type" => "offline", "approval_prompt" => '' }
-          }
-        ]
-        postgresql['enable'] = false
-        gitlab_rails['db_host'] = 'postgresql'
-        gitlab_rails['db_port'] = '5432'
-        gitlab_rails['db_username'] = 'gitlab'
-        gitlab_rails['db_password'] = 'ci5ahLielieY'
-        gitlab_rails['db_database'] = 'gitlab_prod'
-        gitlab_rails['db_adapter'] = 'postgresql'
-        gitlab_rails['db_encoding'] = 'utf8'
+        # postgresql['enable'] = false
+        # gitlab_rails['db_host'] = 'postgresql'
+        # gitlab_rails['db_port'] = '5432'
+        # gitlab_rails['db_username'] = 'gitlab'
+        # gitlab_rails['db_password'] = 'ci5ahLiAyhlq'
+        # gitlab_rails['db_database'] = 'gitlab_prod'
+        # gitlab_rails['db_adapter'] = 'postgresql'
+        # gitlab_rails['db_encoding'] = 'utf8'
         redis['enable'] = false
         gitlab_rails['redis_host'] = 'redis'
         gitlab_rails['redis_port'] = '6379'
@@ -40,12 +34,46 @@ services:
         gitlab_rails['gitlab_email_from'] = 'gitlab@dockerbuch.info'
         gitlab_rails['gitlab_email_reply_to'] = 'gitlab@dockerbuch.info'
         registry_external_url 'https://registry.dockerbuch.info'
-        registry_nginx['listen_port'] = 4567
+        registry['registry_http_addr'] = "0.0.0.0:5000"
+        # gitlab_rails['registry_enabled'] = true
+        # gitlab_rails['api_url'] = 'https://registry.dockerbuch.info'
+        # registry['enable'] = true
         registry_nginx['listen_https'] = false
-        registry_nginx['proxy_set_headers'] = {
-          "X-Forwarded-Proto" => "https",
-          "X-Forwarded-Ssl" => "on"
-        }
+        # g-client-id: 684077971201-6dubvh1keepnoemkql2l5unb58i4o6gv.apps.googleusercontent.com
+        # g-key: W3OQaLVnHJpyltQLT03cBwUb
+        gitlab_rails['omniauth_enabled'] = true
+        gitlab_rails['omniauth_allow_single_sign_on'] = ['google_oauth2']
+        gitlab_rails['omniauth_sync_profile_from_provider'] = ['google_oauth2']
+        gitlab_rails['omniauth_block_auto_created_users'] = false
+        gitlab_rails['omniauth_auto_link_ldap_user'] = true
+        gitlab_rails['omniauth_providers'] = [
+          {
+            "name" => "google_oauth2",
+            "app_id" => "XXXXXXXXXXXX-YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY.apps.googleusercontent.com",
+            "app_secret" => "ZZZZZZZZZZZZZZZZZZZZZZZZ",
+            "args" => { "access_type" => "offline",
+              "approval_prompt" => ''
+            }
+          }
+        ]
+        mattermost_external_url 'https://mattermost.dockerbuch.info'
+        mattermost_nginx['enable'] = false
+        #mattermost_nginx['listen_https'] = false
+        #mattermost_nginx['listen_addresses'] = ['*', '[::]']
+        #mattermost_nginx['listen_port'] = 80
+        #mattermost['service_use_ssl'] = false
+        mattermost['service_address'] = "0.0.0.0"
+        mattermost['service_port'] = "8065"
+        mattermost['gitlab_auth_endpoint'] = "http://gitlab.dockerbuch.info/oauth/authorize"
+        mattermost['gitlab_token_endpoint'] = "http://gitlab.dockerbuch.info/oauth/token"
+        mattermost['gitlab_user_api_endpoint'] = "http://gitlab.dockerbuch.info/api/v4/user"
+        #mattermost['env'] = {
+        #'SSL_CERT_DIR' => "/opt/gitlab/embedded/ssl/certs/"
+        #}
+        # # mattermost['sql_driver_name'] = 'postgres'
+        # # mattermost['sql_data_source'] = "postgres://mattermost:Jaequ7AeL7zo@postgresql/mattermost?sslmode=disable&connect_timeout=10"
+        # mattermost['sql_driver_name'] = 'mysql'
+        # mattermost['sql_data_source'] = "mmuser:mostest@tcp(dockerhost:3306)/mattermost_test?charset=utf8mb4,utf8"
     ports:
       - "2222:22"
     restart: always
@@ -54,22 +82,39 @@ services:
       - logs:/var/log/gitlab
       - data:/var/opt/gitlab
     networks:
-      - nginxterminator_default
+      - web
       - default
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gitlab2.rule=Host(`gitlab.dockerbuch.info`)
+      - traefik.http.routers.gitlab2.tls=true
+      - traefik.http.routers.gitlab2.tls.certresolver=lets-encrypt
+      - traefik.http.services.gitlab2.loadbalancer.server.port=80
+      - traefik.http.routers.gitlab2.service=gitlab2
+      - traefik.http.routers.reg.rule=Host(`registry.dockerbuch.info`)
+      - traefik.http.routers.reg.tls=true
+      - traefik.http.routers.reg.tls.certresolver=lets-encrypt
+      - traefik.http.routers.reg.service=gitlab2-reg
+      - traefik.http.services.gitlab2-reg.loadbalancer.server.port=5000
+      - traefik.http.routers.mm.rule=Host(`mattermost.dockerbuch.info`)
+      - traefik.http.routers.mm.tls=true
+      - traefik.http.routers.mm.tls.certresolver=lets-encrypt
+      - traefik.http.routers.mm.service=mm
+      - traefik.http.services.mm.loadbalancer.server.port=8065
   redis:
-    image: redis:5
+    image: redis:6
   postgresql:
-    image: postgres:10
+    image: postgres:12
     environment:
       - POSTGRES_USER=gitlab
-      - POSTGRES_PASSWORD=ci5ahLielieY
+      - POSTGRES_PASSWORD=ci5ahLiAyhlq
       - POSTGRES_DB=gitlab_prod
     volumes:
       - pgdata:/var/lib/postgresql
   exim:
     build: exim/
     environment:
-      - RELAY_FROM=gitlab_gitlab_1.gitlab_default
+      - RELAY_FROM=gitlab_gitlab2_1.gitlab_default
 
 
 volumes:
@@ -79,7 +124,6 @@ volumes:
   pgdata:
 
 networks:
-  nginxterminator_default:
+  web:
     external: true
-
 
